@@ -34,6 +34,9 @@ form-first field-mapping UI. Built by **Cornerstone**.
 1. **Elementor → Settings → Integrations → Freshsales**: enter your **Domain** and **API Key**, save,
    then click **Validate Connection**.
 2. Edit a page with an **Elementor Form** → **Actions After Submit** → add **Freshsales**.
+
+   ![Add the Freshsales action](docs/images/add-action.png)
+
 3. In the **Freshsales** section, map each of your form fields to a Freshsales field.
 
 See **[docs/USAGE.md](docs/USAGE.md)** for the full walkthrough.
