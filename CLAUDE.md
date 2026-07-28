@@ -1,0 +1,89 @@
+# Elementor Freshsales — CLAUDE.md
+
+WordPress plugin by **Cornerstone**. Adds a **Freshsales** submit-action to Elementor Pro forms
+that creates a Freshsales CRM **lead** from each submission, with field mapping.
+
+## Repo & workflow rules (mandatory)
+- Remote: `git@github.com:andrewvink/elementor-freshsales.git` — **public**.
+- After ANY change: update `/docs/` and this `CLAUDE.md` if affected, then **commit**.
+- Commit messages: **clean and simple**, no Claude/AI attribution or "Co-Authored-By" lines.
+- **Never commit secrets** — no API keys, real account domains, emails, or other personal data.
+  Credentials are entered in WordPress settings, not code. Full docs live in `/docs/` (index at `docs/README.md`).
+
+## What it does
+- Registers a `freshsales` form action (label "Freshsales") on the Elementor Pro forms actions hook.
+- Adds a **Freshsales** section to the form widget's *Actions After Submit* panel: API-key source
+  (Default/Custom) + a **Field Mapping** control.
+- On submit, maps fields and calls `POST /api/leads` on the account's Freshsales domain.
+- Lead source is hardcoded to **"Web Form"** (resolved to its numeric `lead_source_id` at runtime, cached).
+- **Notes** (if mapped) are posted best-effort via `POST /api/notes` after the lead is created.
+
+## Architecture (files)
+- `elementor-freshsales.php` — bootstrap. Defines constants (`VERSION`, `PLUGIN_PATH`, `PLUGIN_URL`),
+  registers the action on `elementor_pro/forms/actions/register` (the action class is required *inside*
+  that hook because it extends a Pro class that only exists once Pro is loaded), enqueues the editor
+  script, and shows an admin notice if Elementor Pro is missing.
+- `includes/class-freshsales-handler.php` — `Freshsales_Handler`: dependency-free API client on the
+  WordPress HTTP API. Validates the account domain against an allowlist, then `create_lead()`,
+  `get_lead_source_id()`, `add_note()`, `validate()`.
+- `includes/class-freshsales-action.php` — `Freshsales_Action extends Integration_Base`: the panel
+  controls, `run()`, field mapping, Integrations-tab settings (Domain + API Key + Validate button),
+  and the Validate AJAX handler.
+- `includes/class-freshsales-map-control.php` — `Freshsales_Map_Control`: a custom repeater control
+  (type `cornerstone_freshsales_map`) registered on `elementor/controls/register`. Renders the mapping
+  **inverted** vs Elementor's default — the form's own fields on the left, a Freshsales-field dropdown
+  on the right — which is clearer for users. Stored item shape stays `{ local_id, remote_id }`.
+- `assets/js/editor.js` — registers the inverted control's editor view (extends
+  `elementor.modules.controls.Repeater`) and a module (extends `elementorModules.editor.utils.Module`)
+  that rebuilds the mapping rows from the form's fields when the Freshsales section opens. The dropdown
+  uses the SELECT control's native `groups` to render `<optgroup>` sections (from each field's `group`).
+- `assets/js/admin.js` — vanilla JS for the "Validate Connection" button.
+- `assets/css/editor.css` — small stylesheet that spaces out the mapping rows; scoped to
+  `.elementor-control-type-cornerstone_freshsales_map` so nothing else in the editor is affected.
+- `uninstall.php` — removes all options + cached transients (multisite-aware).
+
+## Field mapping (remote ids)
+Defined once in PHP — `Cornerstone\Elementor_Freshsales\get_remote_fields()` in the main file — and injected into
+`assets/js/editor.js` via an inline `window.CornerstoneFreshsalesData` script, so the list has a single source.
+Ids: `first_name`, `last_name`, `mobile_number`, `medium`, `keyword` (plain top-level text), `email`
+(validated), `company_name` (→ `company.name`), `notes` ("Recent Note" — written via the Notes API after
+lead creation), and custom fields prefixed `cf_` (e.g. `cf_notes` = "Notes") which `build_lead()` writes into
+the lead's `custom_field` object. Add more of the account's custom fields to `get_remote_fields()` with a
+`cf_` id and they map automatically. These populate the dropdown on each form-field row (inverted control).
+Do not re-hardcode the list in JS. Dropdown/reference fields (e.g. `campaign_id`, `lead_source_id`) are NOT
+offered as free-text — they need an id (Source is resolved by name to "Web Form").
+
+## Error handling (`run()`)
+- **Fail-loud** (re-thrown → shown to logged-in admins, submission marked failed): config/auth errors —
+  missing key/domain (handler throws with exception code `400`), or a 4xx from Freshsales; also the
+  "requires Email or Mobile" guard.
+- **Fail-soft** (swallowed → visitor's submission still succeeds, that lead skipped): transient errors —
+  transport (code `0`), `408`, `429`, `5xx`. Notes + lead-source lookups are always best-effort (own try/catch).
+- The handler encodes the HTTP status as the exception code so `run()` can classify. Keep that contract.
+
+## Freshsales API (classic — developer.freshsales.io)
+- Base: `https://<domain>/api/` where `<domain>` ends in `freshsales.io` / `myfreshworks.com` / `freshworks.com`.
+- Auth header: `Authorization: Token token=<API_KEY>`.
+- Create lead: `POST leads` body `{ "lead": { first_name, last_name, email, mobile_number, company:{name}, lead_source_id } }` → `{ "lead": { "id": N } }`.
+- Lead sources: `GET selector/lead_sources` → `{ "lead_sources": [ { id, name } ] }`.
+- Note: `POST notes` body `{ "note": { description, targetable_type:"Lead", targetable_id } }`.
+
+## Security rules (do not regress)
+- **SSRF**: the domain is validated against a fixed Freshworks-host allowlist (`normalize_domain()`),
+  requests use `wp_safe_remote_request()` with `redirection => 0`. Never build the API URL from
+  unvalidated input, never enable redirects, never switch to `wp_remote_*`.
+- **AJAX**: the Validate handler checks the nonce (`check_ajax_referer`) *and* `manage_options` before doing anything.
+- **Secrets**: the API key is only sent in the Authorization header — never echoed to the browser or included in an exception message.
+- **Escaping/sanitizing**: all admin/editor output is escaped; all mapped form values are sanitized before sending.
+- Every PHP file starts with an `ABSPATH` guard.
+
+## Global settings (options)
+- `elementor_cornerstone_freshsales_domain`, `elementor_cornerstone_freshsales_api_key`.
+  The unprefixed keys are `Freshsales_Handler::OPTION_DOMAIN` / `OPTION_API_KEY` (single source, on the
+  Pro-independent handler so `uninstall.php` can reference them). Elementor's Settings API adds the `elementor_` prefix.
+- Cached lookups: transients prefixed `Freshsales_Handler::SOURCE_TRANSIENT_PREFIX` (`csfs_source_`, 12h).
+  Uninstall sweeps DB-backed transients; object-cache-backed ones self-expire.
+
+## Conventions
+- Namespace `Cornerstone\Elementor_Freshsales`. Version in the plugin header **and** the `VERSION` constant — keep in sync (SemVer).
+- No external libraries. Vanilla JS/CSS only. Mirror Elementor Pro's own integration patterns (see `elementor-pro/modules/forms`).

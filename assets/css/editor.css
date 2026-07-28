@@ -1,0 +1,26 @@
+/**
+ * Editor styles for the Freshsales field-mapping control.
+ *
+ * Aligns each "form field -> Freshsales field" row with the panel's other settings
+ * and spaces the rows out. Scoped to the custom control type.
+ *
+ * @package Cornerstone\Elementor_Freshsales
+ */
+
+.elementor-control-type-cornerstone_freshsales_map .elementor-repeater-fields {
+	margin: 0 0 14px;
+}
+
+.elementor-control-type-cornerstone_freshsales_map .elementor-repeater-fields:first-child {
+	margin-top: 12px;
+}
+
+.elementor-control-type-cornerstone_freshsales_map .elementor-repeater-fields:last-child {
+	margin-bottom: 0;
+}
+
+/* Each row nests a full .elementor-control that carries its own side padding, which
+   double-indents the row. Zero it so labels + dropdowns line up with the other settings. */
+.elementor-control-type-cornerstone_freshsales_map .elementor-repeater-fields .elementor-control {
+	padding: 0;
+}
