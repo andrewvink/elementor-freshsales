@@ -54,5 +54,3 @@ survive and `run()` reads them the same way.
 5. If a "Recent Note" is mapped, `add_note()` (best-effort).
 6. **Error policy:** transient errors (transport/408/429/5xx) are swallowed (visitor's form still
    succeeds); config/auth errors (missing key/domain, 4xx) are re-thrown and shown to admins.
-
-See the data-flow diagram: [images/data-flow.svg](images/data-flow.svg).

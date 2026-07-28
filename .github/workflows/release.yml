@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # git archive honours .gitattributes export-ignore, so the zip is a clean
+      # plugin (no docs, CLAUDE.md, or repo/CI files) with a top-level folder.
+      - name: Build plugin zip
+        run: git archive --format=zip --prefix=elementor-freshsales/ -o elementor-freshsales.zip HEAD
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: elementor-freshsales.zip
+          generate_release_notes: true

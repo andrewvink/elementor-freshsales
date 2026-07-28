@@ -8,7 +8,9 @@ form-first field-mapping UI. Built by **Cornerstone**.
 - Resilient: a temporary Freshsales outage never breaks the visitor's form
 - Clean uninstall — no data left behind
 
-![Data flow](docs/images/data-flow.svg)
+![Field mapping in the Elementor editor](docs/images/field-mapping.png)
+
+*Form-first field mapping: your form fields on the left, Freshsales fields on the right.*
 
 ## Requirements
 
@@ -54,11 +56,7 @@ Adding more fields is a one-line change — see **[docs/FIELD-MAPPING.md](docs/F
 
 ## Screenshots
 
-Editor screenshots live in `docs/images/`. Recommended captures:
-
-- `field-mapping.png` — the Freshsales section in the form panel (form fields → dropdowns)
-- `dropdown-groups.png` — a mapping dropdown open, showing the grouped options
-- `integrations.png` — the Domain / API Key / Validate settings
+The field-mapping panel is shown above. Additional editor screenshots can be added to `docs/images/`.
 
 ## Documentation
 
