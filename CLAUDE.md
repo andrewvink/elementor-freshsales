@@ -28,7 +28,10 @@ that creates a Freshsales CRM **lead** from each submission, with field mapping.
   `get_lead_source_id()`, `add_note()`, `validate()`.
 - `includes/class-freshsales-action.php` — `Freshsales_Action extends Integration_Base`: the panel
   controls, `run()`, field mapping, Integrations-tab settings (Domain + API Key + Validate button),
-  and the Validate AJAX handler.
+  and the Validate AJAX handler. The Validate endpoint tests the values **typed in the fields**, so
+  its success payload is `{ saved, message }` — `saved:false` means "works, but not stored yet" and
+  `admin.js` shows it in amber. Never let it report a plain green success for unsaved credentials:
+  that is what makes a form fail later with "missing an API key" while the settings screen looks fine.
 - `includes/class-freshsales-map-control.php` — `Freshsales_Map_Control`: a custom repeater control
   (type `cornerstone_freshsales_map`) registered on `elementor/controls/register`. Renders the mapping
   **inverted** vs Elementor's default — the form's own fields on the left, a Freshsales-field dropdown

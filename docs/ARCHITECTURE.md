@@ -30,6 +30,20 @@ patterns (MailerLite/MailChimp) but ships a **custom, inverted** field-mapping c
 - `elementor/admin/after_create_settings/{PAGE_ID}` → adds the Integrations-tab fields.
 - `wp_ajax_cornerstone_freshsales_validate` → the Validate endpoint.
 
+### Validate endpoint contract
+
+The button posts the values **currently typed in the two inputs** (falling back to the saved options
+when a box is left blank), so it can be used to test credentials before committing them. Because a
+working key is not the same thing as a *stored* key, the success payload reports both:
+
+```json
+{ "success": true, "data": { "saved": true|false, "message": "…" } }
+```
+
+`saved` is false when the tested values differ from `elementor_cornerstone_freshsales_api_key` /
+`_domain`; `admin.js` then renders the message in amber rather than green. Failures still return a
+plain string in `data`. Keep this shape in sync between `ajax_validate()` and `assets/js/admin.js`.
+
 ## Editor integration
 
 `getControlView(type)` resolves a control type to a JS view via `upperCaseWords()` (capitalizes the first

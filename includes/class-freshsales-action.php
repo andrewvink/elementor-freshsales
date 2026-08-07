@@ -408,12 +408,15 @@ class Freshsales_Action extends Integration_Base {
 		$api_key = isset( $_POST['api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) : '';
 		$domain  = isset( $_POST['domain'] ) ? sanitize_text_field( wp_unslash( $_POST['domain'] ) ) : '';
 
+		$saved_api_key = (string) $this->get_global_api_key();
+		$saved_domain  = (string) $this->get_global_domain();
+
 		// Fall back to saved values so the button also works after saving.
 		if ( '' === $api_key ) {
-			$api_key = (string) $this->get_global_api_key();
+			$api_key = $saved_api_key;
 		}
 		if ( '' === $domain ) {
-			$domain = (string) $this->get_global_domain();
+			$domain = $saved_domain;
 		}
 
 		try {
@@ -423,6 +426,18 @@ class Freshsales_Action extends Integration_Base {
 			wp_send_json_error( esc_html__( 'Could not connect to Freshsales. Check the domain and API key.', 'elementor-freshsales' ) );
 		}
 
-		wp_send_json_success( esc_html__( 'Connected to Freshsales successfully.', 'elementor-freshsales' ) );
+		// The button tests what is typed in the fields, which is not necessarily what is
+		// stored. Say so plainly — a green "connected" on credentials that were never saved
+		// is what makes forms fail later with "missing an API key".
+		$is_saved = ( trim( $api_key ) === trim( $saved_api_key ) && trim( $domain ) === trim( $saved_domain ) );
+
+		wp_send_json_success(
+			array(
+				'saved'   => $is_saved,
+				'message' => $is_saved
+					? esc_html__( 'Connected to Freshsales successfully.', 'elementor-freshsales' )
+					: esc_html__( 'These credentials work — now click Save Changes to store them.', 'elementor-freshsales' ),
+			)
+		);
 	}
 }

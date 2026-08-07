@@ -24,13 +24,15 @@
 		status.style.fontWeight = '600';
 		button.parentNode.insertBefore( status, button.nextSibling );
 
+		var COLOURS = { error: '#d63638', success: '#008a20', unsaved: '#996800' };
+
 		function setState( state, message ) {
-			button.classList.remove( 'loading', 'success', 'error' );
+			button.classList.remove( 'loading', 'success', 'error', 'unsaved' );
 			if ( state ) {
 				button.classList.add( state );
 			}
 			status.textContent = message || '';
-			status.style.color = 'error' === state ? '#d63638' : ( 'success' === state ? '#008a20' : '' );
+			status.style.color = COLOURS[ state ] || '';
 		}
 
 		button.addEventListener( 'click', function ( event ) {
@@ -51,9 +53,16 @@
 			} ).then( function ( response ) {
 				return response.json();
 			} ).then( function ( result ) {
-				var success = !! ( result && result.success );
-				var message = result && result.data ? String( result.data ) : '';
-				setState( success ? 'success' : 'error', message );
+				var data = result && result.data ? result.data : '';
+				var message = 'string' === typeof data ? data : ( data.message || '' );
+
+				if ( ! ( result && result.success ) ) {
+					setState( 'error', message );
+					return;
+				}
+
+				// A working key that is not the stored one is not a working integration yet.
+				setState( false === data.saved ? 'unsaved' : 'success', message );
 			} ).catch( function () {
 				setState( 'error', '' );
 			} );

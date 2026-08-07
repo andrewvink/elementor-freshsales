@@ -15,6 +15,11 @@ Create a Freshsales CRM **lead** from an Elementor Pro form.
    - **API Key** — from Freshsales: *Profile picture → Profile Settings → API Settings → Your API key*.
 3. Click **Save Changes**, then **Validate Connection**. You should see “Connected to Freshsales successfully.”
 
+> **Validate Connection tests what is typed in the fields, not what is stored.** If you validate
+> before saving, it reports *“These credentials work — now click Save Changes to store them.”* in
+> amber. Only the green *“Connected to Freshsales successfully.”* means the credentials the forms
+> will actually use are in place.
+
 ## 2. Add the action to a form
 1. Edit a page with an **Elementor Form** (or add one).
 2. Select the Form widget → **Content → Actions After Submit** → add **Freshsales**.
@@ -46,6 +51,13 @@ The **Lead Source** is always set to **“Web Form.”** (If that source doesn't
 - **Configuration problems** (missing/invalid API key or domain, a rejected request, or no Email/Mobile mapped) **fail the submission**: the visitor sees a generic error, and logged-in admins see the specific reason appended under the form so they can fix it.
 
 ## Troubleshooting
+- **Submissions say “missing an API key” even though the key is on the settings screen** — the key
+  is typed into the field but not stored. Reload **Elementor → Settings → Integrations** without
+  typing anything: if the Domain and API Key boxes come back empty, nothing was ever saved. Enter
+  them again and click **Save Changes** (the browser URL should come back with `settings-updated=true`),
+  *then* **Validate Connection** — it must go green.
+  The same symptom shows up in the editor: the Freshsales section displays orange “Set your
+  Freshsales API Key / Domain in the Integrations Settings” alerts whenever the stored values are empty.
 - **“Validate Connection” fails** — re-check the domain (`https://` and a trailing slash are tolerated) and the API key. The domain must be a Freshsales/Freshworks host.
 - **Submission fails with an error** — log in as an admin and submit again; the specific Freshsales reason is shown under the form (e.g. missing key/domain, or no Email/Mobile mapped). Fix it under Elementor → Settings → Integrations or in the form's field mapping.
 - **Form succeeds but a lead is missing** — this happens when Freshsales was briefly unreachable (the form is intentionally not broken for visitors). Use **Validate Connection** to confirm connectivity.

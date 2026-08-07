@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Elementor Freshsales
  * Description: Adds a "Freshsales" action to Elementor Pro forms that creates a Freshsales CRM lead from each submission, with field mapping.
- * Version:     1.0.0
+ * Version:     1.0.1
  * Author:      Cornerstone
  * Text Domain: elementor-freshsales
  * Domain Path: /languages
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 
 define( __NAMESPACE__ . '\PLUGIN_FILE', __FILE__ );
 define( __NAMESPACE__ . '\PLUGIN_PATH', plugin_dir_path( __FILE__ ) );

@@ -3,7 +3,7 @@ Contributors: cornerstone
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,6 +23,12 @@ Freshworks hosts, all requests use WordPress's safe HTTP client with redirects d
 "Validate" endpoint enforces a nonce and capability check, and all output is escaped.
 
 == Changelog ==
+
+= 1.0.1 =
+* "Validate Connection" now says whether the credentials it just tested are the ones actually
+  saved. Testing values that have been typed but not yet saved reports "click Save Changes to
+  store them" instead of a green "Connected successfully", which previously made an unsaved key
+  look configured while forms still failed with "missing an API key".
 
 = 1.0.0 =
 * Initial release: Freshsales form action, field mapping, global/per-form API key, "Web Form" lead
