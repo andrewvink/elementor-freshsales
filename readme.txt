@@ -3,7 +3,7 @@ Contributors: cornerstone
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.1.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,6 +23,12 @@ Freshworks hosts, all requests use WordPress's safe HTTP client with redirects d
 "Validate" endpoint enforces a nonce and capability check, and all output is escaped.
 
 == Changelog ==
+
+= 1.1.0 =
+* Field Mapping can now map the form's own **Form Name** to any Freshsales field. It appears as the
+  first row, above the form's fields.
+* Renamed the dropdown's "Contact" group to "Name & contact", and stated on the mapping control that
+  each submission creates a lead — "Contact" read as though it created a Freshsales contact.
 
 = 1.0.1 =
 * "Validate Connection" now says whether the credentials it just tested are the ones actually

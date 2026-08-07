@@ -19,6 +19,11 @@
 		return ( window.CornerstoneFreshsalesData && window.CornerstoneFreshsalesData.remoteFields ) || [];
 	}
 
+	// Mappable sources that are not form fields (e.g. the form's own name). PHP owns the list.
+	function virtualFields() {
+		return ( window.CornerstoneFreshsalesData && window.CornerstoneFreshsalesData.virtualFields ) || [];
+	}
+
 	/**
 	 * The control view: rows are the form's fields; each row's dropdown selects a
 	 * Freshsales field. Mirrors Elementor Pro's Fields_Map view, inverted.
@@ -29,7 +34,8 @@
 				this.$el.hide();
 			},
 
-			// Build one row per form field, preserving any saved Freshsales selection.
+			// Build one row per virtual source, then one per form field, preserving any
+			// saved Freshsales selection.
 			rebuild: function () {
 				var self = this,
 					saved = {};
@@ -41,6 +47,13 @@
 				} );
 
 				self.collection.reset();
+
+				virtualFields().forEach( function ( field ) {
+					self.collection.add( {
+						local_id: field.local_id,
+						remote_id: saved[ field.local_id ] ? saved[ field.local_id ] : ''
+					} );
+				} );
 
 				self.elementSettingsModel.get( 'form_fields' ).each( function ( fieldModel ) {
 					if ( -1 !== SKIP_TYPES.indexOf( fieldModel.get( 'field_type' ) ) ) {
@@ -92,15 +105,31 @@
 					groups[ 'g' + index ] = { label: group, options: byGroup[ group ] };
 				} );
 
+				var virtualLabels = {};
+
+				virtualFields().forEach( function ( field ) {
+					virtualLabels[ field.local_id ] = field.label;
+				} );
+
 				self.children.each( function ( rowView ) {
 					var remoteControl = rowView.children.last(), // the remote_id SELECT
 						localId = rowView.model.get( 'local_id' ),
-						formField = formFields.findWhere( { custom_id: localId } ),
+						isVirtual = Object.prototype.hasOwnProperty.call( virtualLabels, localId ),
+						formField = isVirtual ? null : formFields.findWhere( { custom_id: localId } ),
+						label;
+
+					if ( isVirtual ) {
+						label = virtualLabels[ localId ];
+					} else {
 						label = formField ? ( formField.get( 'field_label' ) || localId ) : localId;
+					}
 
 					remoteControl.model.set( 'label', label );
 					remoteControl.model.set( 'groups', groups );
 					remoteControl.render();
+
+					// Mark virtual rows so the stylesheet can set them apart from the form's fields.
+					rowView.$el.toggleClass( 'cornerstone-freshsales-virtual-row', isVirtual );
 
 					rowView.$el.find( '.elementor-repeater-row-tools' ).hide();
 					rowView.$el.find( '.elementor-repeater-row-controls' )

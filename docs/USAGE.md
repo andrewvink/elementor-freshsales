@@ -25,7 +25,13 @@ Create a Freshsales CRM **lead** from an Elementor Pro form.
 2. Select the Form widget → **Content → Actions After Submit** → add **Freshsales**.
 3. Open the new **Freshsales** section:
    - **API Key** — leave on **Default** to use the global key, or choose **Custom** to override it for this form.
-   - **Field Mapping** — appears once a key is available. Each of **your form fields** is listed on the left; for each one, pick the **Freshsales field** it should fill from the dropdown on the right (or leave it **None**):
+   - **Field Mapping** — appears once a key is available. Each of **your form fields** is listed on the left; for each one, pick the **Freshsales field** it should fill from the dropdown on the right (or leave it **None**).
+
+     Above the form's fields there is a **Form Name** row, separated by a line. Map it to send the
+     form's own name (the widget's *Form Name* setting) to Freshsales — handy for telling enquiries
+     from different forms apart. It can feed more than one Freshsales field.
+
+     The dropdown's options are:
 
      | Freshsales option | Notes |
      |-------------------|-------|

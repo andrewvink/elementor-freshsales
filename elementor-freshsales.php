@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Elementor Freshsales
  * Description: Adds a "Freshsales" action to Elementor Pro forms that creates a Freshsales CRM lead from each submission, with field mapping.
- * Version:     1.0.1
+ * Version:     1.1.0
  * Author:      Cornerstone
  * Text Domain: elementor-freshsales
  * Domain Path: /languages
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-const VERSION = '1.0.1';
+const VERSION = '1.1.0';
 
 define( __NAMESPACE__ . '\PLUGIN_FILE', __FILE__ );
 define( __NAMESPACE__ . '\PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
@@ -55,6 +55,32 @@ add_action(
 );
 
 /**
+ * Reserved `local_id` for the "Form Name" mapping row.
+ *
+ * Virtual sources use a `__` prefix so they can never collide with an Elementor form
+ * field's custom id. Kept next to get_virtual_fields() as the single source.
+ */
+const FORM_NAME_SOURCE = '__form_name';
+
+/**
+ * Mappable sources that are not form fields.
+ *
+ * These are rendered above the form's own fields in the Field Mapping control, so a
+ * value that lives on the form itself (rather than in a submitted field) can still be
+ * sent to Freshsales. Resolved by Freshsales_Action::get_mapped_value().
+ *
+ * @return array<int, array<string, string>>
+ */
+function get_virtual_fields() {
+	return array(
+		array(
+			'local_id' => FORM_NAME_SOURCE,
+			'label'    => __( 'Form Name', 'elementor-freshsales' ),
+		),
+	);
+}
+
+/**
  * The Freshsales lead fields offered in the form's Field Mapping control.
  *
  * Single source of truth: consumed by the editor script (below) and matched by
@@ -69,28 +95,28 @@ function get_remote_fields() {
 			'remote_label'    => __( 'First Name', 'elementor-freshsales' ),
 			'remote_type'     => 'text',
 			'remote_required' => false,
-			'group'           => __( 'Contact', 'elementor-freshsales' ),
+			'group'           => __( 'Name & contact', 'elementor-freshsales' ),
 		),
 		array(
 			'remote_id'       => 'last_name',
 			'remote_label'    => __( 'Last Name', 'elementor-freshsales' ),
 			'remote_type'     => 'text',
 			'remote_required' => false,
-			'group'           => __( 'Contact', 'elementor-freshsales' ),
+			'group'           => __( 'Name & contact', 'elementor-freshsales' ),
 		),
 		array(
 			'remote_id'       => 'email',
 			'remote_label'    => __( 'Email', 'elementor-freshsales' ),
 			'remote_type'     => 'email',
 			'remote_required' => true,
-			'group'           => __( 'Contact', 'elementor-freshsales' ),
+			'group'           => __( 'Name & contact', 'elementor-freshsales' ),
 		),
 		array(
 			'remote_id'       => 'mobile_number',
 			'remote_label'    => __( 'Mobile', 'elementor-freshsales' ),
 			'remote_type'     => 'text',
 			'remote_required' => false,
-			'group'           => __( 'Contact', 'elementor-freshsales' ),
+			'group'           => __( 'Name & contact', 'elementor-freshsales' ),
 		),
 		array(
 			'remote_id'       => 'company_name',
@@ -149,7 +175,12 @@ add_action(
 
 		wp_add_inline_script(
 			'cornerstone-freshsales-editor',
-			'window.CornerstoneFreshsalesData = ' . wp_json_encode( array( 'remoteFields' => get_remote_fields() ) ) . ';',
+			'window.CornerstoneFreshsalesData = ' . wp_json_encode(
+				array(
+					'remoteFields'  => get_remote_fields(),
+					'virtualFields' => get_virtual_fields(),
+				)
+			) . ';',
 			'before'
 		);
 

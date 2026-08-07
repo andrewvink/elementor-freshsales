@@ -24,3 +24,11 @@
 .elementor-control-type-cornerstone_freshsales_map .elementor-repeater-fields .elementor-control {
 	padding: 0;
 }
+
+/* Sources that come from the form itself rather than a submitted field (e.g. Form Name)
+   are listed first; a rule after the last one separates them from the form's own fields. */
+.elementor-control-type-cornerstone_freshsales_map .cornerstone-freshsales-virtual-row:not(:has(+ .cornerstone-freshsales-virtual-row)) {
+	border-bottom: 1px solid var(--e-a-border-color, #3f444b);
+	margin-bottom: 14px;
+	padding-bottom: 14px;
+}

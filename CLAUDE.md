@@ -48,7 +48,15 @@ that creates a Freshsales CRM **lead** from each submission, with field mapping.
 ## Field mapping (remote ids)
 Defined once in PHP — `Cornerstone\Elementor_Freshsales\get_remote_fields()` in the main file — and injected into
 `assets/js/editor.js` via an inline `window.CornerstoneFreshsalesData` script, so the list has a single source.
-Ids: `first_name`, `last_name`, `mobile_number`, `medium`, `keyword` (plain top-level text), `email`
+
+**Sources (left column).** `get_virtual_fields()` declares mappable sources that are *not* form fields;
+they render above the form's fields, separated by a rule (`.cornerstone-freshsales-virtual-row`). Today
+that is only **Form Name** (`local_id` = `FORM_NAME_SOURCE` = `__form_name`, read from
+`$record->get_form_settings( 'form_name' )` in `get_mapped_value()`). The `__` prefix keeps them from
+colliding with a form field's Custom ID. Add one by extending `get_virtual_fields()` *and* resolving it
+in `get_mapped_value()` — the editor picks it up from `window.CornerstoneFreshsalesData.virtualFields`.
+
+**Remote ids.** `first_name`, `last_name`, `mobile_number`, `medium`, `keyword` (plain top-level text), `email`
 (validated), `company_name` (→ `company.name`), `notes` ("Recent Note" — written via the Notes API after
 lead creation), and custom fields prefixed `cf_` (e.g. `cf_notes` = "Notes") which `build_lead()` writes into
 the lead's `custom_field` object. Add more of the account's custom fields to `get_remote_fields()` with a

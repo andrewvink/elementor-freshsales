@@ -147,12 +147,13 @@ class Freshsales_Action extends Integration_Base {
 		$widget->add_control(
 			'freshsales_fields_map',
 			array(
-				'label'      => esc_html__( 'Field Mapping', 'elementor-freshsales' ),
-				'type'       => Freshsales_Map_Control::CONTROL_TYPE,
-				'separator'  => 'before',
-				'fields'     => $repeater->get_controls(),
+				'label'       => esc_html__( 'Field Mapping', 'elementor-freshsales' ),
+				'description' => esc_html__( 'Every submission creates a new lead in Freshsales.', 'elementor-freshsales' ),
+				'type'        => Freshsales_Map_Control::CONTROL_TYPE,
+				'separator'   => 'before',
+				'fields'      => $repeater->get_controls(),
 				// Only show the mapping once an API key is available.
-				'conditions' => array(
+				'conditions'  => array(
 					'relation' => 'or',
 					'terms'    => array(
 						array(
@@ -315,7 +316,16 @@ class Freshsales_Action extends Integration_Base {
 
 			$local_id = isset( $item['local_id'] ) ? $item['local_id'] : '';
 
-			if ( '' === $local_id || empty( $fields[ $local_id ]['value'] ) ) {
+			if ( '' === $local_id ) {
+				return '';
+			}
+
+			// Virtual sources live on the form itself, not in the submitted fields.
+			if ( FORM_NAME_SOURCE === $local_id ) {
+				return (string) $record->get_form_settings( 'form_name' );
+			}
+
+			if ( empty( $fields[ $local_id ]['value'] ) ) {
 				return '';
 			}
 

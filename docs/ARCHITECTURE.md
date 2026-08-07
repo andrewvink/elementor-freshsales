@@ -50,10 +50,13 @@ plain string in `data`. Keep this shape in sync between `ajax_validate()` and `a
 letter only), so control type `cornerstone_freshsales_map` resolves to the view registered under that name.
 
 The control view extends `elementor.modules.controls.Repeater`:
-- `rebuild()` — resets the repeater collection to one row per form field (skipping `step`/`html`),
-  preserving any saved selection. Triggered on `section:activated` for `section_freshsales`.
-- `onRender()` — for each row sets the label to the form field's label and the dropdown to grouped
-  Freshsales options using the SELECT control's native `groups` (`<optgroup>`).
+- `rebuild()` — resets the repeater collection to one row per virtual source (`get_virtual_fields()`,
+  injected as `CornerstoneFreshsalesData.virtualFields`) followed by one row per form field (skipping
+  `step`/`html`), preserving any saved selection. Triggered on `section:activated` for `section_freshsales`.
+- `onRender()` — for each row sets the label (the virtual source's label, else the form field's label)
+  and the dropdown to grouped Freshsales options using the SELECT control's native `groups`
+  (`<optgroup>`). Virtual rows get `.cornerstone-freshsales-virtual-row` so the stylesheet can rule
+  them off from the form's own fields.
 
 Stored item shape is `{ local_id, remote_id }` — identical to Elementor Pro's `Fields_Map`, so mappings
 survive and `run()` reads them the same way.
