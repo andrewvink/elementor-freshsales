@@ -282,7 +282,9 @@ class Freshsales_Action extends Integration_Base {
 			if ( 0 !== strpos( $remote_id, 'cf_' ) ) {
 				continue;
 			}
-			$value = sanitize_text_field( $this->get_mapped_value( $record, $remote_id ) );
+			// Textarea sanitiser: these are free-text fields, so a value concatenated from
+			// several form fields keeps one entry per line instead of running together.
+			$value = sanitize_textarea_field( $this->get_mapped_value( $record, $remote_id ) );
 			if ( '' !== $value ) {
 				$custom[ $remote_id ] = $value;
 			}
@@ -295,7 +297,10 @@ class Freshsales_Action extends Integration_Base {
 	}
 
 	/**
-	 * Resolve the submitted value for a mapped remote field.
+	 * Resolve the submitted value(s) for a mapped remote field.
+	 *
+	 * When more than one source is mapped to the same Freshsales field, every non-empty
+	 * value is concatenated (newline-separated, panel order) instead of the first one winning.
 	 *
 	 * @param \ElementorPro\Modules\Forms\Classes\Form_Record $record    Submission record.
 	 * @param string                                          $remote_id Remote field id.
@@ -309,6 +314,8 @@ class Freshsales_Action extends Integration_Base {
 			return '';
 		}
 
+		$values = array();
+
 		foreach ( $map as $item ) {
 			if ( ! isset( $item['remote_id'] ) || $item['remote_id'] !== $remote_id ) {
 				continue;
@@ -317,22 +324,31 @@ class Freshsales_Action extends Integration_Base {
 			$local_id = isset( $item['local_id'] ) ? $item['local_id'] : '';
 
 			if ( '' === $local_id ) {
-				return '';
+				continue;
 			}
 
 			// Virtual sources live on the form itself, not in the submitted fields.
 			if ( FORM_NAME_SOURCE === $local_id ) {
-				return (string) $record->get_form_settings( 'form_name' );
+				$value = (string) $record->get_form_settings( 'form_name' );
+			} elseif ( isset( $fields[ $local_id ]['value'] ) ) {
+				$value = (string) $fields[ $local_id ]['value'];
+			} else {
+				$value = '';
 			}
 
-			if ( empty( $fields[ $local_id ]['value'] ) ) {
-				return '';
-			}
+			$value = trim( $value );
 
-			return (string) $fields[ $local_id ]['value'];
+			if ( '' !== $value ) {
+				$values[] = $value;
+			}
 		}
 
-		return '';
+		// Several sources may point at one Freshsales field — keep them all rather than
+		// letting the first win, in the order the rows appear in the panel, one per line.
+		// Note destinations are sanitised with sanitize_textarea_field() so the breaks
+		// survive; single-line destinations collapse them to spaces via sanitize_text_field(),
+		// so a doubled-up name still reads "John Smith".
+		return implode( "\n", $values );
 	}
 
 	/**

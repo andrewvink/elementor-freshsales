@@ -3,7 +3,7 @@ Contributors: cornerstone
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,6 +23,13 @@ Freshworks hosts, all requests use WordPress's safe HTTP client with redirects d
 "Validate" endpoint enforces a nonce and capability check, and all output is escaped.
 
 == Changelog ==
+
+= 1.2.0 =
+* Mapping several form fields to the same Freshsales field now keeps all of them instead of only
+  the first. Values are joined in panel order, one per line — so mapping Message and Product both
+  to "Recent Note" writes both. Previously the second was silently dropped, and an empty first
+  field discarded the rest too.
+* The "Notes" custom field keeps its line breaks, so a note built from several fields stays readable.
 
 = 1.1.0 =
 * Field Mapping can now map the form's own **Form Name** to any Freshsales field. It appears as the

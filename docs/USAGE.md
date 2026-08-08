@@ -45,6 +45,10 @@ Create a Freshsales CRM **lead** from an Elementor Pro form.
      | Recent Note       | optional — added to the lead as an activity note (shows under "Recent note") |
      | Notes             | optional — written to the lead's custom "Notes" field |
 
+     You can point **more than one form field at the same Freshsales field** — the values are
+     combined in the order the rows appear, one per line. Mapping both *Message* and *Product* to
+     **Recent Note** writes both into the note rather than one replacing the other.
+
      \* Freshsales needs **at least one** of Email or Mobile. Point at least one form field at Email or Mobile.
 
      (Dropdown/reference fields such as **Source** and **Campaign** aren't listed here — they need a Freshsales record ID, not free text. Source is set automatically to "Web Form".)

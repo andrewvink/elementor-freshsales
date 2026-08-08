@@ -44,6 +44,26 @@ Defined once in `get_remote_fields()` (`elementor-freshsales.php`) and injected 
 **Source** is not a mapped option — it is hardcoded to **"Web Form"** and resolved to its `lead_source_id`
 at submit time (cached 12h).
 
+## Mapping several sources to one Freshsales field
+
+Sources are **not** mutually exclusive. Point Message *and* Product at **Recent Note** and both are
+sent, joined **in panel order, one per line**:
+
+```
+I need a quote for 50 units
+Garment Steamer
+```
+
+`get_mapped_value()` collects every row matching the `remote_id`, drops empty values, and joins with a newline. Whether that break survives is decided by the sanitiser the destination uses:
+
+| Destination | Sanitiser | Result of a doubled-up mapping |
+|-------------|-----------|--------------------------------|
+| `notes` (Recent Note), `cf_*` (Notes) | `sanitize_textarea_field()` | line breaks kept — one value per line |
+| everything else | `sanitize_text_field()` | break collapses to a space — "John" + "Smith" → `John Smith` |
+
+That is one rule with the right outcome at both ends, so no per-field special-casing is needed.
+An empty source contributes nothing and never suppresses the others.
+
 ## How the payload is built (`build_lead()`)
 
 - **Plain top-level text fields** (`first_name`, `last_name`, `mobile_number`, `medium`, `keyword`) →

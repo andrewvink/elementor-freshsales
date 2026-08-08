@@ -56,6 +56,13 @@ that is only **Form Name** (`local_id` = `FORM_NAME_SOURCE` = `__form_name`, rea
 colliding with a form field's Custom ID. Add one by extending `get_virtual_fields()` *and* resolving it
 in `get_mapped_value()` — the editor picks it up from `window.CornerstoneFreshsalesData.virtualFields`.
 
+**Many-to-one.** `get_mapped_value()` collects *every* row mapped to a `remote_id` and joins the
+non-empty values with a newline — it must never return on the first match (that silently dropped the
+second mapping, and an empty first field killed the rest). Note destinations (`notes`, `cf_*`) are
+sanitised with `sanitize_textarea_field()` so the breaks survive; other fields use
+`sanitize_text_field()`, which collapses the break to a space. Keep that pairing — it is what makes
+one join rule correct for both notes and single-line fields.
+
 **Remote ids.** `first_name`, `last_name`, `mobile_number`, `medium`, `keyword` (plain top-level text), `email`
 (validated), `company_name` (→ `company.name`), `notes` ("Recent Note" — written via the Notes API after
 lead creation), and custom fields prefixed `cf_` (e.g. `cf_notes` = "Notes") which `build_lead()` writes into
