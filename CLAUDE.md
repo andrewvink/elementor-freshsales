@@ -41,6 +41,11 @@ that creates a Freshsales CRM **lead** from each submission, with field mapping.
   that rebuilds the mapping rows from the form's fields when the Freshsales section opens. The dropdown
   uses the SELECT control's native `groups` to render `<optgroup>` sections (from each field's `group`).
 - `assets/js/admin.js` — vanilla JS for the "Validate Connection" button.
+- `assets/js/campaign.js` — first-touch campaign capture. Enqueued on **every** front-end page and in
+  the **header** (the visitor lands on the UTM URL long before they reach a form). Writes the
+  `csfs_campaign` cookie only if one does not already exist, so the first touch is never overwritten.
+- `tests/run-tests.php` — dependency-free suite (no Composer/PHPUnit); boots real WordPress.
+  `php tests/run-tests.php`. Must be green before a release. `export-ignore`d from the zip.
 - `assets/css/editor.css` — small stylesheet that spaces out the mapping rows; scoped to
   `.elementor-control-type-cornerstone_freshsales_map` so nothing else in the editor is affected.
 - `uninstall.php` — removes all options + cached transients (multisite-aware).
@@ -85,6 +90,22 @@ offered as free-text — they need an id (Source is resolved by name to "Web For
 - Create lead: `POST leads` body `{ "lead": { first_name, last_name, email, mobile_number, company:{name}, lead_source_id } }` → `{ "lead": { "id": N } }`.
 - Lead sources: `GET selector/lead_sources` → `{ "lead_sources": [ { id, name } ] }`.
 - Note: `POST notes` body `{ "note": { description, targetable_type:"Lead", targetable_id } }`.
+
+## Campaign capture (UTM)
+- `get_campaign_params()` (main file) is the single source for the tracked query params; it is
+  injected into `campaign.js` **and** reused as the allowlist when the cookie is read back.
+- **The `csfs_campaign` cookie is visitor-controlled — treat it as hostile.** `get_campaign_data()`
+  rejects payloads over 4096 bytes *before* decoding, accepts only allowlisted keys, requires
+  `is_scalar`, truncates to `CAMPAIGN_VALUE_MAX`, and runs `sanitize_text_field()`. Do not relax any
+  of these; `tests/run-tests.php` locks the behaviour in.
+- Cookies arrive magic-quoted (`wp_magic_quotes()`), so `wp_unslash()` must run **before**
+  `json_decode()` — otherwise every cookie containing a quote silently fails to parse.
+- Precedence: `apply_campaign_fields()` only fills `medium`/`keyword` when the field mapping left
+  them empty. An explicit mapping always wins.
+- `utm_campaign` is resolved to a numeric `campaign_id` via `selector/campaigns` (reference field,
+  best-effort, cached). Lead Source stays "Web Form" — `utm_source` goes in the campaign note, so
+  existing source reporting is not silently rewritten.
+- Attribution is written as its **own** note so it never dilutes the enquiry note.
 
 ## Security rules (do not regress)
 - **SSRF**: the domain is validated against a fixed Freshworks-host allowlist (`normalize_domain()`),

@@ -198,20 +198,45 @@ class Freshsales_Handler {
 	/**
 	 * Resolve a lead-source name (e.g. "Web Form") to its numeric ID.
 	 *
-	 * The result — including a 0 "not found" result — is cached per domain+name
-	 * to avoid an extra API round-trip on every submission. Never throws.
-	 *
 	 * @param string $name Lead-source name.
 	 * @return int Lead-source ID, or 0 when not found/unavailable.
 	 */
 	public function get_lead_source_id( $name ) {
+		return $this->resolve_selector_id( 'selector/lead_sources', 'lead_sources', $name );
+	}
+
+	/**
+	 * Resolve a campaign name (e.g. a utm_campaign value) to its numeric ID.
+	 *
+	 * Campaign is a reference field on the lead, so it needs an ID — a campaign that
+	 * does not exist in the account cannot be created here and resolves to 0.
+	 *
+	 * @param string $name Campaign name.
+	 * @return int Campaign ID, or 0 when not found/unavailable.
+	 */
+	public function get_campaign_id( $name ) {
+		return $this->resolve_selector_id( 'selector/campaigns', 'campaigns', $name );
+	}
+
+	/**
+	 * Look up a named record in one of Freshsales' selector endpoints.
+	 *
+	 * The result — including a 0 "not found" result — is cached per domain+endpoint+name
+	 * to avoid an extra API round-trip on every submission. Never throws.
+	 *
+	 * @param string $endpoint Selector endpoint, relative to /api/.
+	 * @param string $key      Key holding the list in the decoded response.
+	 * @param string $name     Record name to match (case-insensitive).
+	 * @return int Record ID, or 0 when not found/unavailable.
+	 */
+	private function resolve_selector_id( $endpoint, $key, $name ) {
 		$name = trim( (string) $name );
 
 		if ( '' === $name ) {
 			return 0;
 		}
 
-		$cache_key = self::SOURCE_TRANSIENT_PREFIX . md5( $this->base_url . '|' . strtolower( $name ) );
+		$cache_key = self::SOURCE_TRANSIENT_PREFIX . md5( $this->base_url . '|' . $endpoint . '|' . strtolower( $name ) );
 		$cached    = get_transient( $cache_key );
 
 		if ( false !== $cached ) {
@@ -219,19 +244,19 @@ class Freshsales_Handler {
 		}
 
 		try {
-			$data    = $this->request( 'GET', 'selector/lead_sources' );
-			$sources = ( isset( $data['lead_sources'] ) && is_array( $data['lead_sources'] ) ) ? $data['lead_sources'] : array();
+			$data    = $this->request( 'GET', $endpoint );
+			$records = ( isset( $data[ $key ] ) && is_array( $data[ $key ] ) ) ? $data[ $key ] : array();
 
 			$id = 0;
-			foreach ( $sources as $source ) {
-				if ( isset( $source['name'], $source['id'] ) && 0 === strcasecmp( trim( (string) $source['name'] ), $name ) ) {
-					$id = (int) $source['id'];
+			foreach ( $records as $record ) {
+				if ( isset( $record['name'], $record['id'] ) && 0 === strcasecmp( trim( (string) $record['name'] ), $name ) ) {
+					$id = (int) $record['id'];
 					break;
 				}
 			}
 
 			// Only cache a result derived from a successful API response — caching an
-			// exception-path 0 would suppress the real source for the whole TTL.
+			// exception-path 0 would suppress the real record for the whole TTL.
 			set_transient( $cache_key, $id, 12 * HOUR_IN_SECONDS );
 
 			return $id;

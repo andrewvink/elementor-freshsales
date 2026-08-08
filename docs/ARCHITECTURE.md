@@ -28,7 +28,18 @@ patterns (MailerLite/MailChimp) but ships a **custom, inverted** field-mapping c
 - `elementor/editor/after_enqueue_scripts` → enqueues `editor.js` + `editor.css` and injects
   `window.CornerstoneFreshsalesData.remoteFields` (from `get_remote_fields()`) via an inline script.
 - `elementor/admin/after_create_settings/{PAGE_ID}` → adds the Integrations-tab fields.
+- `wp_enqueue_scripts` → enqueues `campaign.js` (header, every front-end page) with the tracked
+  parameter list injected as `window.CornerstoneFreshsalesCampaign`.
 - `wp_ajax_cornerstone_freshsales_validate` → the Validate endpoint.
+
+## Campaign capture
+
+`campaign.js` writes the first-touch `csfs_campaign` cookie; the browser then sends it with the
+form's admin-ajax POST, which is how the landing URL's query string survives the visitor browsing
+the site. `Freshsales_Action::get_campaign_data()` reads it back through a hostile-input gauntlet
+(size guard → `wp_unslash` → `json_decode` → key allowlist → `is_scalar` → length cap →
+`sanitize_text_field`). `apply_campaign_fields()` then fills only what the mapping left empty, and
+`build_campaign_note()` produces a separate attribution note.
 
 ### Validate endpoint contract
 

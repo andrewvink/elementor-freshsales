@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Elementor Freshsales
  * Description: Adds a "Freshsales" action to Elementor Pro forms that creates a Freshsales CRM lead from each submission, with field mapping.
- * Version:     1.2.0
+ * Version:     1.3.0
  * Author:      Cornerstone
  * Text Domain: elementor-freshsales
  * Domain Path: /languages
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 
 define( __NAMESPACE__ . '\PLUGIN_FILE', __FILE__ );
 define( __NAMESPACE__ . '\PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
@@ -53,6 +53,55 @@ add_action(
 		$controls_manager->register( new Freshsales_Map_Control() );
 	}
 );
+
+/**
+ * Cookie holding the visitor's first-touch campaign data.
+ *
+ * Written by assets/js/campaign.js on the first page of the visit that carries any
+ * tracked parameter, and read back in Freshsales_Action::get_campaign_data(). The
+ * browser sends it with the form's admin-ajax POST, which is how the landing page's
+ * query string survives a visitor browsing the site before submitting.
+ */
+const CAMPAIGN_COOKIE = 'csfs_campaign';
+
+/**
+ * How long the first-touch campaign cookie lives, in days.
+ */
+const CAMPAIGN_COOKIE_DAYS = 180;
+
+/**
+ * Longest value accepted for any single campaign parameter.
+ *
+ * The cookie is visitor-controlled, so every value is length-capped and sanitised
+ * before it can reach the Freshsales payload.
+ */
+const CAMPAIGN_VALUE_MAX = 200;
+
+/**
+ * Query parameters captured from the landing URL.
+ *
+ * Single source of truth: injected into assets/js/campaign.js and used as the
+ * allowlist when the cookie is read back, so nothing outside this list is ever sent.
+ *
+ * @return array<int, string>
+ */
+function get_campaign_params() {
+	return array(
+		// Standard UTM tags.
+		'utm_source',
+		'utm_medium',
+		'utm_campaign',
+		'utm_term',
+		'utm_content',
+		// Ad-platform click identifiers.
+		'gclid',
+		'gbraid',
+		'wbraid',
+		'fbclid',
+		'msclkid',
+		'ttclid',
+	);
+}
 
 /**
  * Reserved `local_id` for the "Form Name" mapping row.
@@ -189,6 +238,38 @@ add_action(
 			PLUGIN_URL . 'assets/css/editor.css',
 			array(),
 			VERSION
+		);
+	}
+);
+
+/**
+ * Capture first-touch campaign data on the front end.
+ *
+ * Enqueued on every page (not just pages with a form) and in the header, because the
+ * visitor usually lands on a UTM-tagged URL and only reaches the form later.
+ */
+add_action(
+	'wp_enqueue_scripts',
+	function () {
+		wp_enqueue_script(
+			'cornerstone-freshsales-campaign',
+			PLUGIN_URL . 'assets/js/campaign.js',
+			array(),
+			VERSION,
+			false // Header: capture before the visitor can navigate away.
+		);
+
+		wp_add_inline_script(
+			'cornerstone-freshsales-campaign',
+			'window.CornerstoneFreshsalesCampaign = ' . wp_json_encode(
+				array(
+					'cookie' => CAMPAIGN_COOKIE,
+					'days'   => CAMPAIGN_COOKIE_DAYS,
+					'max'    => CAMPAIGN_VALUE_MAX,
+					'params' => get_campaign_params(),
+				)
+			) . ';',
+			'before'
 		);
 	}
 );

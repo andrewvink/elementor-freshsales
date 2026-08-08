@@ -52,7 +52,44 @@ Create a Freshsales CRM **lead** from an Elementor Pro form.
      \* Freshsales needs **at least one** of Email or Mobile. Point at least one form field at Email or Mobile.
 
      (Dropdown/reference fields such as **Source** and **Campaign** aren't listed here — they need a Freshsales record ID, not free text. Source is set automatically to "Web Form".)
+   - **Capture Campaign Data** — on by default. Sends the UTM tags and ad click IDs from the page
+     the visitor first arrived on. Nothing to set up: no hidden fields, no mapping.
 4. **Update** the page. Submissions now create a lead.
+
+### Campaign tracking
+
+With **Capture Campaign Data** on, the plugin remembers the campaign parameters from the URL a
+visitor **first arrives on** and sends them when they eventually submit a form — even if they browse
+several pages in between. That is the part hidden form fields normally get wrong: by the time
+someone reaches your contact page, the `?utm_...` tags are long gone from the address bar.
+
+Captured: `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`, and the `gclid`,
+`gbraid`, `wbraid`, `fbclid`, `msclkid` and `ttclid` ad click IDs, plus the landing page and
+referring site.
+
+Where it goes in Freshsales:
+
+| Captured | Lands in |
+|----------|----------|
+| `utm_medium` | the lead's **Medium** field |
+| `utm_term` | the lead's **Keyword** field |
+| `utm_campaign` | the lead's **Campaign**, matched by name to a campaign in your account |
+| everything else | a note on the lead's timeline, headed "Campaign data captured from the visitor's first visit" |
+
+Notes on behaviour:
+
+- **First touch wins.** The campaign that originally brought the visitor is kept; a later visit
+  through a different link does not overwrite it. Remembered for 180 days.
+- **Your mapping always wins.** If you have mapped a form field to Medium or Keyword, capture leaves
+  it alone and only fills what you left empty.
+- **Campaign must already exist** in Freshsales for the lead's Campaign field to be set — Freshsales
+  needs a real campaign record, not free text. If there is no match, the name is still recorded in
+  the note, so nothing is lost.
+- **Lead Source stays "Web Form."** `utm_source` is recorded in the note rather than replacing it,
+  so your existing source reporting keeps working.
+- Nothing in the URL means nothing is sent — no blank fields and no empty notes.
+- It relies on a first-party cookie (`csfs_campaign`). A visitor who blocks cookies is simply not
+  attributed; the form still works normally.
 
 The **Lead Source** is always set to **“Web Form.”** (If that source doesn't exist in your account, the lead is still created without a source.)
 

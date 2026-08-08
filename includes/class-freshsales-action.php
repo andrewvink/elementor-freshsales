@@ -130,6 +130,17 @@ class Freshsales_Action extends Integration_Base {
 
 		$this->register_map_control( $widget );
 
+		$widget->add_control(
+			'freshsales_capture_campaign',
+			array(
+				'label'       => esc_html__( 'Capture Campaign Data', 'elementor-freshsales' ),
+				'type'        => Controls_Manager::SWITCHER,
+				'default'     => 'yes',
+				'separator'   => 'before',
+				'description' => esc_html__( 'Record the UTM tags and ad click IDs from the page the visitor first arrived on, and send them with the lead. Anything you have mapped above takes precedence.', 'elementor-freshsales' ),
+			)
+		);
+
 		$widget->end_controls_section();
 	}
 
@@ -211,6 +222,13 @@ class Freshsales_Action extends Integration_Base {
 
 		$lead = $this->build_lead( $record );
 
+		// First-touch campaign data, when the form opts in. Never overrides the mapping.
+		// Absent on forms saved before this setting existed — default to capturing.
+		$capture  = isset( $form_settings['freshsales_capture_campaign'] ) ? $form_settings['freshsales_capture_campaign'] : 'yes';
+		$campaign = ( 'yes' === $capture ) ? $this->get_campaign_data() : array();
+
+		$this->apply_campaign_fields( $lead, $campaign );
+
 		// Freshsales requires at least one contact method to create a lead.
 		if ( empty( $lead['email'] ) && empty( $lead['mobile_number'] ) ) {
 			throw new \Exception( esc_html__( 'requires a mapped Email or Mobile field with a value.', 'elementor-freshsales' ) );
@@ -225,12 +243,27 @@ class Freshsales_Action extends Integration_Base {
 				$lead['lead_source_id'] = $source_id;
 			}
 
+			// Campaign is a reference field: resolve the utm_campaign name to an id.
+			// Best-effort — an unknown campaign simply stays in the campaign note.
+			if ( ! empty( $campaign['utm_campaign'] ) && empty( $lead['campaign_id'] ) ) {
+				$campaign_id = $handler->get_campaign_id( $campaign['utm_campaign'] );
+				if ( $campaign_id > 0 ) {
+					$lead['campaign_id'] = $campaign_id;
+				}
+			}
+
 			$lead_id = $handler->create_lead( $lead );
 
-			// Best-effort note — never blocks lead creation.
+			// Best-effort notes — never block lead creation.
 			$note = sanitize_textarea_field( $this->get_mapped_value( $record, 'notes' ) );
 			if ( $lead_id > 0 && '' !== $note ) {
 				$handler->add_note( $lead_id, $note );
+			}
+
+			// Attribution goes in its own note so it never dilutes the enquiry note.
+			$campaign_note = $this->build_campaign_note( $campaign );
+			if ( $lead_id > 0 && '' !== $campaign_note ) {
+				$handler->add_note( $lead_id, $campaign_note );
 			}
 		} catch ( \Exception $e ) {
 			// A transient Freshsales problem (network/timeout = code 0, rate-limit 408/429,
@@ -243,6 +276,120 @@ class Freshsales_Action extends Integration_Base {
 			}
 			throw $e;
 		}
+	}
+
+	/**
+	 * Read the visitor's first-touch campaign data back out of the cookie.
+	 *
+	 * SECURITY: the cookie is written by the browser and is therefore entirely
+	 * visitor-controlled. Only keys on the allowlist are accepted, every value is
+	 * length-capped and sanitised, and the payload size is bounded — nothing here may
+	 * be trusted on its way into the Freshsales request.
+	 *
+	 * @return array<string, string> Sanitised parameter => value pairs (possibly empty).
+	 */
+	private function get_campaign_data() {
+		if ( empty( $_COOKIE[ CAMPAIGN_COOKIE ] ) ) {
+			return array();
+		}
+
+		$raw = (string) wp_unslash( $_COOKIE[ CAMPAIGN_COOKIE ] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitised per value below.
+
+		// Bound the work before decoding: a cookie this large is not ours.
+		if ( strlen( $raw ) > 4096 ) {
+			return array();
+		}
+
+		$decoded = json_decode( $raw, true );
+
+		if ( ! is_array( $decoded ) ) {
+			return array();
+		}
+
+		$allowed = array_merge( get_campaign_params(), array( 'landing_page', 'referrer' ) );
+		$data    = array();
+
+		foreach ( $allowed as $key ) {
+			if ( ! isset( $decoded[ $key ] ) || ! is_scalar( $decoded[ $key ] ) ) {
+				continue;
+			}
+
+			$value = sanitize_text_field( substr( (string) $decoded[ $key ], 0, CAMPAIGN_VALUE_MAX ) );
+
+			if ( '' !== $value ) {
+				$data[ $key ] = $value;
+			}
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Apply captured campaign data to the lead, without disturbing explicit mappings.
+	 *
+	 * Only fills fields the field mapping left empty — a deliberate mapping always wins.
+	 *
+	 * @param array $lead     Lead payload built from the field mapping (by reference).
+	 * @param array $campaign Sanitised campaign data.
+	 */
+	private function apply_campaign_fields( array &$lead, array $campaign ) {
+		$targets = array(
+			'utm_medium' => 'medium',
+			'utm_term'   => 'keyword',
+		);
+
+		foreach ( $targets as $param => $remote_id ) {
+			if ( isset( $campaign[ $param ] ) && empty( $lead[ $remote_id ] ) ) {
+				$lead[ $remote_id ] = $campaign[ $param ];
+			}
+		}
+	}
+
+	/**
+	 * Build the timeline note that records how the lead found the site.
+	 *
+	 * Written as its own note so it never dilutes the enquiry note the form's own
+	 * fields produce. Returns '' when there is nothing worth recording.
+	 *
+	 * @param array $campaign Sanitised campaign data.
+	 * @return string
+	 */
+	private function build_campaign_note( array $campaign ) {
+		if ( empty( $campaign ) ) {
+			return '';
+		}
+
+		$labels = array(
+			'utm_source'   => __( 'Source', 'elementor-freshsales' ),
+			'utm_medium'   => __( 'Medium', 'elementor-freshsales' ),
+			'utm_campaign' => __( 'Campaign', 'elementor-freshsales' ),
+			'utm_term'     => __( 'Term', 'elementor-freshsales' ),
+			'utm_content'  => __( 'Content', 'elementor-freshsales' ),
+			'gclid'        => __( 'Google click ID', 'elementor-freshsales' ),
+			'gbraid'       => __( 'Google click ID (gbraid)', 'elementor-freshsales' ),
+			'wbraid'       => __( 'Google click ID (wbraid)', 'elementor-freshsales' ),
+			'fbclid'       => __( 'Facebook click ID', 'elementor-freshsales' ),
+			'msclkid'      => __( 'Microsoft click ID', 'elementor-freshsales' ),
+			'ttclid'       => __( 'TikTok click ID', 'elementor-freshsales' ),
+			'landing_page' => __( 'Landing page', 'elementor-freshsales' ),
+			'referrer'     => __( 'Referrer', 'elementor-freshsales' ),
+		);
+
+		$lines = array();
+
+		foreach ( $labels as $key => $label ) {
+			if ( isset( $campaign[ $key ] ) ) {
+				$lines[] = $label . ': ' . $campaign[ $key ];
+			}
+		}
+
+		if ( empty( $lines ) ) {
+			return '';
+		}
+
+		array_unshift( $lines, __( 'Campaign data captured from the visitor’s first visit:', 'elementor-freshsales' ) );
+
+		return implode( "\n", $lines );
 	}
 
 	/**
