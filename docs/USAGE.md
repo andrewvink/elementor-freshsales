@@ -69,5 +69,15 @@ The **Lead Source** is always set to **“Web Form.”** (If that source doesn't
 - **Form succeeds but a lead is missing** — this happens when Freshsales was briefly unreachable (the form is intentionally not broken for visitors). Use **Validate Connection** to confirm connectivity.
 - **Notes not attached** — notes are best-effort and never block lead creation; verify the Notes field is mapped.
 
+## Updating
+Install the new zip with **Plugins → Add New → Upload Plugin**, and choose **“Replace current with
+uploaded”** when WordPress offers it. That path never runs `uninstall.php`, so the saved domain and
+API key survive the update and the plugin stays active.
+
+**Do not deactivate and delete the old copy first** — deleting a plugin runs `uninstall.php`, which
+removes the saved Freshsales credentials, and the forms will then fail with “missing an API key”
+until you enter and save them again. Field mappings are unaffected either way: they live inside the
+page content, not in the options table.
+
 ## Uninstalling
 Deleting the plugin from **Plugins** runs `uninstall.php`, which removes its options and cached data. Nothing is left behind. (Per-form mapping lives inside the page content and is removed with the form.)
