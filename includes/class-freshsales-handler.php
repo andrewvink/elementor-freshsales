@@ -221,8 +221,11 @@ class Freshsales_Handler {
 	/**
 	 * Look up a named record in one of Freshsales' selector endpoints.
 	 *
-	 * The result — including a 0 "not found" result — is cached per domain+endpoint+name
-	 * to avoid an extra API round-trip on every submission. Never throws.
+	 * The whole selector list is cached per domain+endpoint as a name => id map — never one
+	 * entry per looked-up name. Two reasons: the name can come from the visitor-controlled
+	 * campaign cookie, so per-name keys would let a visitor mint unbounded transients and API
+	 * round-trips; and caching a per-name "not found" would hide a record created in Freshsales
+	 * after the first miss for the whole TTL. Never throws.
 	 *
 	 * @param string $endpoint Selector endpoint, relative to /api/.
 	 * @param string $key      Key holding the list in the decoded response.
@@ -236,34 +239,34 @@ class Freshsales_Handler {
 			return 0;
 		}
 
-		$cache_key = self::SOURCE_TRANSIENT_PREFIX . md5( $this->base_url . '|' . $endpoint . '|' . strtolower( $name ) );
-		$cached    = get_transient( $cache_key );
+		$cache_key = self::SOURCE_TRANSIENT_PREFIX . md5( $this->base_url . '|' . $endpoint );
+		$map       = get_transient( $cache_key );
 
-		if ( false !== $cached ) {
-			return (int) $cached;
-		}
+		// Also tolerates a stale int left by the previous per-name cache scheme.
+		if ( ! is_array( $map ) ) {
+			try {
+				$data    = $this->request( 'GET', $endpoint );
+				$records = ( isset( $data[ $key ] ) && is_array( $data[ $key ] ) ) ? $data[ $key ] : array();
 
-		try {
-			$data    = $this->request( 'GET', $endpoint );
-			$records = ( isset( $data[ $key ] ) && is_array( $data[ $key ] ) ) ? $data[ $key ] : array();
-
-			$id = 0;
-			foreach ( $records as $record ) {
-				if ( isset( $record['name'], $record['id'] ) && 0 === strcasecmp( trim( (string) $record['name'] ), $name ) ) {
-					$id = (int) $record['id'];
-					break;
+				$map = array();
+				foreach ( $records as $record ) {
+					if ( isset( $record['name'], $record['id'] ) ) {
+						$map[ strtolower( trim( (string) $record['name'] ) ) ] = (int) $record['id'];
+					}
 				}
+
+				// Only cache a map derived from a successful API response — caching an
+				// exception-path empty map would suppress real records for the whole TTL.
+				set_transient( $cache_key, $map, 12 * HOUR_IN_SECONDS );
+			} catch ( \Exception $e ) {
+				// Transient/auth/network failure: do not cache; retry on the next submission.
+				return 0;
 			}
-
-			// Only cache a result derived from a successful API response — caching an
-			// exception-path 0 would suppress the real record for the whole TTL.
-			set_transient( $cache_key, $id, 12 * HOUR_IN_SECONDS );
-
-			return $id;
-		} catch ( \Exception $e ) {
-			// Transient/auth/network failure: do not cache; retry on the next submission.
-			return 0;
 		}
+
+		$lookup = strtolower( $name );
+
+		return isset( $map[ $lookup ] ) ? (int) $map[ $lookup ] : 0;
 	}
 
 	/**

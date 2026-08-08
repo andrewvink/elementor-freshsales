@@ -33,7 +33,14 @@ Freshworks hosts, all requests use WordPress's safe HTTP client with redirects d
   or return later through a different link.
 * Anything you have mapped by hand always wins — capture only fills fields the mapping left empty.
 * New "Capture Campaign Data" switch on the Freshsales section, on by default.
-* Added a dependency-free test suite (`php tests/run-tests.php`).
+* Medium and Keyword are no longer offered for manual mapping — they are filled from the captured
+  campaign data instead. Added the account's "Enquiry Type" and "Product Enquiry" custom fields.
+* Campaign and lead-source lookups now cache the whole list once per account instead of one entry
+  per name, so a campaign created in Freshsales is picked up straight away rather than after the
+  12-hour cache expires.
+* The capture script is not loaded until a Freshsales domain is saved, and can be switched off
+  site-wide with the `cornerstone_freshsales_capture_campaign` filter.
+* Added a dependency-free test suite (`php tests/run-tests.php`) — 47 tests.
 
 = 1.2.0 =
 * Mapping several form fields to the same Freshsales field now keeps all of them instead of only

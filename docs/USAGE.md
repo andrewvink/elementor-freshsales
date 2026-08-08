@@ -40,10 +40,13 @@ Create a Freshsales CRM **lead** from an Elementor Pro form.
      | Email             | required* |
      | Mobile            | required* |
      | Company Name      | optional |
-     | Medium            | optional — e.g. a UTM medium |
-     | Keyword           | optional — e.g. a UTM keyword |
+     | Enquiry Type      | optional — the lead's custom "Enquiry Type" field |
+     | Product Enquiry   | optional — the lead's custom "Product Enquiry" field |
      | Recent Note       | optional — added to the lead as an activity note (shows under "Recent note") |
      | Notes             | optional — written to the lead's custom "Notes" field |
+
+     **Medium** and **Keyword** are not listed: they are filled automatically from the visitor's
+     campaign data (below), so there is nothing to map by hand.
 
      You can point **more than one form field at the same Freshsales field** — the values are
      combined in the order the rows appear, one per line. Mapping both *Message* and *Product* to
@@ -51,7 +54,7 @@ Create a Freshsales CRM **lead** from an Elementor Pro form.
 
      \* Freshsales needs **at least one** of Email or Mobile. Point at least one form field at Email or Mobile.
 
-     (Dropdown/reference fields such as **Source** and **Campaign** aren't listed here — they need a Freshsales record ID, not free text. Source is set automatically to "Web Form".)
+     (Dropdown/reference fields such as **Source** and **Campaign** aren't listed here — they need a Freshsales record ID, not free text. Source is set automatically to "Web Form"; Campaign is matched from the visitor's `utm_campaign`.)
    - **Capture Campaign Data** — on by default. Sends the UTM tags and ad click IDs from the page
      the visitor first arrived on. Nothing to set up: no hidden fields, no mapping.
 4. **Update** the page. Submissions now create a lead.
@@ -73,7 +76,7 @@ Where it goes in Freshsales:
 |----------|----------|
 | `utm_medium` | the lead's **Medium** field |
 | `utm_term` | the lead's **Keyword** field |
-| `utm_campaign` | the lead's **Campaign**, matched by name to a campaign in your account |
+| `utm_campaign` | the lead's **Campaign**, matched by name to a campaign in your account — see the note below |
 | everything else | a note on the lead's timeline, headed "Campaign data captured from the visitor's first visit" |
 
 Notes on behaviour:
@@ -83,13 +86,21 @@ Notes on behaviour:
 - **Your mapping always wins.** If you have mapped a form field to Medium or Keyword, capture leaves
   it alone and only fills what you left empty.
 - **Campaign must already exist** in Freshsales for the lead's Campaign field to be set — Freshsales
-  needs a real campaign record, not free text. If there is no match, the name is still recorded in
-  the note, so nothing is lost.
+  needs a real campaign record, not free text. Create campaigns whose names match your `utm_campaign`
+  values (Freshsales → Campaigns). Until then the Campaign field stays empty and the name is recorded
+  in the campaign note instead, so nothing is lost.
 - **Lead Source stays "Web Form."** `utm_source` is recorded in the note rather than replacing it,
   so your existing source reporting keeps working.
 - Nothing in the URL means nothing is sent — no blank fields and no empty notes.
-- It relies on a first-party cookie (`csfs_campaign`). A visitor who blocks cookies is simply not
-  attributed; the form still works normally.
+- It relies on a first-party cookie named **`csfs_campaign`**, set for **180 days**, holding only the
+  captured parameters plus the landing page and referring site (query strings stripped from both, so
+  personal data and session tokens in URLs are never copied into the CRM). It is only ever written on
+  a visit that actually carries a tracked parameter — organic and direct visitors get no cookie at
+  all. A visitor who blocks cookies is simply not attributed; the form still works normally.
+- The script is not loaded until a Freshsales **Domain** is saved under Integrations, so an
+  unconfigured install never sets a cookie.
+- To suppress capture site-wide (for example from a consent-management plugin), return false from the
+  `cornerstone_freshsales_capture_campaign` filter.
 
 The **Lead Source** is always set to **“Web Form.”** (If that source doesn't exist in your account, the lead is still created without a source.)
 
@@ -109,6 +120,15 @@ The **Lead Source** is always set to **“Web Form.”** (If that source doesn't
 - **Submission fails with an error** — log in as an admin and submit again; the specific Freshsales reason is shown under the form (e.g. missing key/domain, or no Email/Mobile mapped). Fix it under Elementor → Settings → Integrations or in the form's field mapping.
 - **Form succeeds but a lead is missing** — this happens when Freshsales was briefly unreachable (the form is intentionally not broken for visitors). Use **Validate Connection** to confirm connectivity.
 - **Notes not attached** — notes are best-effort and never block lead creation; verify the Notes field is mapped.
+
+## Privacy
+
+Campaign capture stores the `csfs_campaign` first-party cookie described above and sends its
+contents to your Freshsales account with the lead. Nothing is sent to any third party, and no cookie
+is written for visitors who arrive without campaign parameters. If your privacy policy lists cookies,
+add `csfs_campaign` (purpose: marketing attribution; lifetime: 180 days). Turn it off per form with
+the **Capture Campaign Data** switch, or site-wide with the
+`cornerstone_freshsales_capture_campaign` filter.
 
 ## Updating
 Install the new zip with **Plugins → Add New → Upload Plugin**, and choose **“Replace current with

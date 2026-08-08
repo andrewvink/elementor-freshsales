@@ -175,20 +175,6 @@ function get_remote_fields() {
 			'group'           => __( 'Company', 'elementor-freshsales' ),
 		),
 		array(
-			'remote_id'       => 'medium',
-			'remote_label'    => __( 'Medium', 'elementor-freshsales' ),
-			'remote_type'     => 'text',
-			'remote_required' => false,
-			'group'           => __( 'Source information', 'elementor-freshsales' ),
-		),
-		array(
-			'remote_id'       => 'keyword',
-			'remote_label'    => __( 'Keyword', 'elementor-freshsales' ),
-			'remote_type'     => 'text',
-			'remote_required' => false,
-			'group'           => __( 'Source information', 'elementor-freshsales' ),
-		),
-		array(
 			'remote_id'       => 'notes',
 			'remote_label'    => __( 'Recent Note', 'elementor-freshsales' ),
 			'remote_type'     => 'text',
@@ -197,6 +183,20 @@ function get_remote_fields() {
 		),
 		// Custom lead fields (remote_id prefixed "cf_") are written into the lead's
 		// custom_field object by run(). Add more of your account's custom fields here.
+		array(
+			'remote_id'       => 'cf_enquiry_type',
+			'remote_label'    => __( 'Enquiry Type', 'elementor-freshsales' ),
+			'remote_type'     => 'text',
+			'remote_required' => false,
+			'group'           => __( 'Enquiry', 'elementor-freshsales' ),
+		),
+		array(
+			'remote_id'       => 'cf_product_enquiry',
+			'remote_label'    => __( 'Product Enquiry', 'elementor-freshsales' ),
+			'remote_type'     => 'text',
+			'remote_required' => false,
+			'group'           => __( 'Enquiry', 'elementor-freshsales' ),
+		),
 		array(
 			'remote_id'       => 'cf_notes',
 			'remote_label'    => __( 'Notes', 'elementor-freshsales' ),
@@ -251,6 +251,25 @@ add_action(
 add_action(
 	'wp_enqueue_scripts',
 	function () {
+		/**
+		 * Filter whether first-touch campaign capture runs on the front end.
+		 *
+		 * Return false to stop the cookie ever being written — the hook a consent-management
+		 * plugin or site owner needs to suppress capture without editing this file.
+		 *
+		 * @param bool $enabled Whether to enqueue the capture script.
+		 */
+		if ( ! apply_filters( 'cornerstone_freshsales_capture_campaign', true ) ) {
+			return;
+		}
+
+		// Never set a tracking cookie on a site where the integration was never configured.
+		require_once PLUGIN_PATH . 'includes/class-freshsales-handler.php';
+
+		if ( '' === (string) get_option( 'elementor_' . Freshsales_Handler::OPTION_DOMAIN ) ) {
+			return;
+		}
+
 		wp_enqueue_script(
 			'cornerstone-freshsales-campaign',
 			PLUGIN_URL . 'assets/js/campaign.js',

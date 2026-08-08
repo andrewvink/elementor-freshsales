@@ -137,7 +137,7 @@ class Freshsales_Action extends Integration_Base {
 				'type'        => Controls_Manager::SWITCHER,
 				'default'     => 'yes',
 				'separator'   => 'before',
-				'description' => esc_html__( 'Record the UTM tags and ad click IDs from the page the visitor first arrived on, and send them with the lead. Anything you have mapped above takes precedence.', 'elementor-freshsales' ),
+				'description' => esc_html__( 'Record the UTM tags and ad click IDs from the page the visitor first arrived on, and send them with the lead.', 'elementor-freshsales' ),
 			)
 		);
 
@@ -289,7 +289,8 @@ class Freshsales_Action extends Integration_Base {
 	 * @return array<string, string> Sanitised parameter => value pairs (possibly empty).
 	 */
 	private function get_campaign_data() {
-		if ( empty( $_COOKIE[ CAMPAIGN_COOKIE ] ) ) {
+		// A repeated or array-syntax cookie header (csfs_campaign[a]=1) makes this an array.
+		if ( empty( $_COOKIE[ CAMPAIGN_COOKIE ] ) || ! is_string( $_COOKIE[ CAMPAIGN_COOKIE ] ) ) {
 			return array();
 		}
 
@@ -314,7 +315,14 @@ class Freshsales_Action extends Integration_Base {
 				continue;
 			}
 
-			$value = sanitize_text_field( substr( (string) $decoded[ $key ], 0, CAMPAIGN_VALUE_MAX ) );
+			// Cut on characters, not bytes: splitting a multi-byte character would make
+			// sanitize_text_field() discard the whole value as invalid UTF-8.
+			$value = (string) $decoded[ $key ];
+			$value = function_exists( 'mb_substr' )
+				? mb_substr( $value, 0, CAMPAIGN_VALUE_MAX )
+				: substr( $value, 0, CAMPAIGN_VALUE_MAX );
+
+			$value = sanitize_text_field( $value );
 
 			if ( '' !== $value ) {
 				$data[ $key ] = $value;
@@ -325,9 +333,12 @@ class Freshsales_Action extends Integration_Base {
 	}
 
 	/**
-	 * Apply captured campaign data to the lead, without disturbing explicit mappings.
+	 * Apply captured campaign data to the lead.
 	 *
-	 * Only fills fields the field mapping left empty — a deliberate mapping always wins.
+	 * This is the only writer of the lead's `medium` and `keyword` attributes — they are not
+	 * offered in the Field Mapping control, so there is nothing for capture to fight with. The
+	 * emptiness check below is therefore defensive, not a live precedence rule: it keeps the
+	 * invariant true if either field is ever made mappable again.
 	 *
 	 * @param array $lead     Lead payload built from the field mapping (by reference).
 	 * @param array $campaign Sanitised campaign data.
@@ -401,8 +412,9 @@ class Freshsales_Action extends Integration_Base {
 	private function build_lead( $record ) {
 		$lead = array();
 
-		// Plain, top-level text fields on the lead.
-		foreach ( array( 'first_name', 'last_name', 'mobile_number', 'medium', 'keyword' ) as $remote_id ) {
+		// Plain, top-level text fields on the lead. `medium` and `keyword` are deliberately
+		// absent: they are filled from the captured campaign data, not from the mapping.
+		foreach ( array( 'first_name', 'last_name', 'mobile_number' ) as $remote_id ) {
 			$value = sanitize_text_field( $this->get_mapped_value( $record, $remote_id ) );
 			if ( '' !== $value ) {
 				$lead[ $remote_id ] = $value;

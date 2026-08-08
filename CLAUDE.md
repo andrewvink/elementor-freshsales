@@ -68,11 +68,13 @@ sanitised with `sanitize_textarea_field()` so the breaks survive; other fields u
 `sanitize_text_field()`, which collapses the break to a space. Keep that pairing — it is what makes
 one join rule correct for both notes and single-line fields.
 
-**Remote ids.** `first_name`, `last_name`, `mobile_number`, `medium`, `keyword` (plain top-level text), `email`
+**Remote ids.** `first_name`, `last_name`, `mobile_number` (plain top-level text), `email`
 (validated), `company_name` (→ `company.name`), `notes` ("Recent Note" — written via the Notes API after
 lead creation), and custom fields prefixed `cf_` (e.g. `cf_notes` = "Notes") which `build_lead()` writes into
 the lead's `custom_field` object. Add more of the account's custom fields to `get_remote_fields()` with a
-`cf_` id and they map automatically. These populate the dropdown on each form-field row (inverted control).
+`cf_` id and they map automatically (the reference account has `cf_notes`, `cf_enquiry_type`,
+`cf_product_enquiry`). The lead's `medium`/`keyword` attributes are **not** offered for manual
+mapping — `apply_campaign_fields()` is their only writer. These populate the dropdown on each form-field row (inverted control).
 Do not re-hardcode the list in JS. Dropdown/reference fields (e.g. `campaign_id`, `lead_source_id`) are NOT
 offered as free-text — they need an id (Source is resolved by name to "Web Form").
 
@@ -106,6 +108,12 @@ offered as free-text — they need an id (Source is resolved by name to "Web For
   best-effort, cached). Lead Source stays "Web Form" — `utm_source` goes in the campaign note, so
   existing source reporting is not silently rewritten.
 - Attribution is written as its **own** note so it never dilutes the enquiry note.
+- `resolve_selector_id()` caches the **whole selector list** per domain+endpoint as a `name => id`
+  map. Never key the cache by the looked-up name: the name can come from the cookie (unbounded
+  transients + one API call per novel name), and a per-name "not found" would hide a record created
+  in Freshsales after the first miss for the full 12h TTL.
+- The capture script is only enqueued once a domain is configured, and is gated by the
+  `cornerstone_freshsales_capture_campaign` filter — an unconfigured install must never set a cookie.
 
 ## Security rules (do not regress)
 - **SSRF**: the domain is validated against a fixed Freshworks-host allowlist (`normalize_domain()`),

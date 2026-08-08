@@ -34,10 +34,14 @@ Defined once in `get_remote_fields()` (`elementor-freshsales.php`) and injected 
 | Name & contact | Email\* | `email` | top-level (validated with `is_email`) |
 | Name & contact | Mobile\* | `mobile_number` | top-level |
 | Company | Company Name | `company_name` | `company: { name }` |
-| Source information | Medium | `medium` | top-level |
-| Source information | Keyword | `keyword` | top-level |
+| Enquiry | Enquiry Type | `cf_enquiry_type` | `custom_field: { cf_enquiry_type }` |
+| Enquiry | Product Enquiry | `cf_product_enquiry` | `custom_field: { cf_product_enquiry }` |
 | Notes | Recent Note | `notes` | separate `POST /api/notes` after create (best-effort) |
 | Notes | Notes | `cf_notes` | `custom_field: { cf_notes }` |
+
+The lead's `medium` and `keyword` attributes are **not** offered here — they are written from the
+captured campaign data (`utm_medium` / `utm_term`) instead of by hand. `apply_campaign_fields()` is
+their only writer.
 
 \* Freshsales requires **at least one** of Email or Mobile; otherwise `run()` throws a config error.
 
