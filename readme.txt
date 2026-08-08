@@ -3,7 +3,7 @@ Contributors: cornerstone
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,6 +23,10 @@ Freshworks hosts, all requests use WordPress's safe HTTP client with redirects d
 "Validate" endpoint enforces a nonce and capability check, and all output is escaped.
 
 == Changelog ==
+
+= 1.3.1 =
+* The campaign note is now written before the enquiry note, so the lead's "Recent note" shows what
+  the person actually asked for rather than the ad campaign they arrived from.
 
 = 1.3.0 =
 * Automatic campaign capture. The UTM tags and ad click IDs on the page a visitor first arrives on

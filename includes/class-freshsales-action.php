@@ -255,15 +255,18 @@ class Freshsales_Action extends Integration_Base {
 			$lead_id = $handler->create_lead( $lead );
 
 			// Best-effort notes — never block lead creation.
-			$note = sanitize_textarea_field( $this->get_mapped_value( $record, 'notes' ) );
-			if ( $lead_id > 0 && '' !== $note ) {
-				$handler->add_note( $lead_id, $note );
-			}
-
-			// Attribution goes in its own note so it never dilutes the enquiry note.
+			//
+			// Attribution goes in its own note so it never dilutes the enquiry note, and it is
+			// written FIRST: Freshsales surfaces the newest note as the lead's "Recent note",
+			// and what a salesperson needs at a glance is the enquiry, not the ad campaign.
 			$campaign_note = $this->build_campaign_note( $campaign );
 			if ( $lead_id > 0 && '' !== $campaign_note ) {
 				$handler->add_note( $lead_id, $campaign_note );
+			}
+
+			$note = sanitize_textarea_field( $this->get_mapped_value( $record, 'notes' ) );
+			if ( $lead_id > 0 && '' !== $note ) {
+				$handler->add_note( $lead_id, $note );
 			}
 		} catch ( \Exception $e ) {
 			// A transient Freshsales problem (network/timeout = code 0, rate-limit 408/429,
